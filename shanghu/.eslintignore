@@ -1,0 +1,6 @@
+/build/
+/config/
+/dist/
+/*.js
+/src/libs/*.js
+/src/store/modules/*.js

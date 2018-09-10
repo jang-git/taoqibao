@@ -1,0 +1,767 @@
+<style lang="less">
+  @import '../../styles/common.less';
+</style>
+<template>
+  <div>
+    <Row :gutter="10">
+      <Col span="24">
+        <Card>
+          <Steps :current="current">
+            <Step title="第一步" content="选择任务类型"></Step>
+            <Step title="第二步" content="填写任务信息"></Step>
+            <Step title="第三步" content="支付"></Step>
+            <Step title="第四步" content="发布成功"></Step>
+            <!-- <Step title="第五步" content="确认发布"></Step> -->
+          </Steps>
+        </Card>
+      </Col>
+    </Row>
+    <div class="step-block" v-show="current===0">
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              1.选择您的店铺 (如果没有，请先绑定店铺)
+            </p>
+            <RadioGroup v-model="step1.sid" vertical @on-change="changeShop">
+              <Radio v-for="(item,index) in shoplist" :key="index" :label="item.id">
+                  <Icon type="social-apple"></Icon>
+                  <span>{{item.shop_name}}</span>
+              </Radio>
+            </RadioGroup>
+            <!-- <Tabs>
+              <TabPane label="淘宝" icon="social-apple">
+                <div class="shop-block active" v-for="(item,index) in shopdata" :key="index">
+                  {{item.shopname}}
+                </div>
+                <Select placeholder="选择店铺" v-model="data.shopname">
+                  <Option value="店铺一">店铺一</Option>
+                  <Option value="shanghai">店铺二</Option>
+                </Select>
+              </TabPane>
+              <TabPane label="天猫" icon="social-windows">暂无店铺</TabPane>
+              <TabPane label="京东" icon="social-tux">暂无店铺</TabPane>
+              <TabPane label="拼多多" icon="social-tux">暂无店铺</TabPane>
+            </Tabs> -->
+
+          </Card>
+        </Col>
+      </Row>
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              2.选择任务类型
+            </p>
+            <RadioGroup v-model="step1.tid" vertical>
+              <Radio label="100" :disabled="currentPlatform !== '100'">手机淘宝任务（用户在手机淘宝app下单）</Radio>
+              <Radio label="102" :disabled="currentPlatform !== '102'">手机拼多多</Radio>
+              <Radio label="103" :disabled="currentPlatform !== '103'">手机京东</Radio>
+              <!-- <Radio label="pc">PC端</Radio> -->
+            </RadioGroup>
+          </Card>
+        </Col>
+      </Row>
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              <Icon type="mouse"></Icon>
+              选择平台返款模式
+            </p>
+            <RadioGroup v-model="step1.fantype" vertical>
+              <Radio label="1">平台系统返款（收取服务费1元/单）</Radio>
+              <!-- <Radio label="pc">PC端</Radio> -->
+            </RadioGroup>
+            <!-- <Select placeholder="选择任务类型" v-model="data.tasktype">
+              <Option value="ziran">自然搜索入店（通过提供的关键字，从淘宝，天猫手淘自然搜索入店找到商品下单。）</Option>
+              <Option value="shanghai">叠词回访入店（买手可切换多个搜索关键词进店货比，收藏加购浏览下单。）</Option>
+              <Option value="shangha">收藏加购（任务模式:默认收藏店铺,领取全店优惠券,目标商品+要求的副宝贝个数收藏并加购物车。）</Option>
+              <Option value="shanghi">回访下单（可自定义访客几日后回访下单，增加回购权重。）</Option>
+              <Option value="shangh">竞品流量劫持（通过此任务可在猜你喜欢，购物车，下单成功等区域蚕食竞品流量。）</Option>
+              <Option value="shahai">复制淘口令入店（买家通过您提供的淘口令打开手淘直接搜索进店）</Option>
+            </Select> -->
+          </Card>
+        </Col>
+      </Row>
+    </div>
+
+    <div class="step-block" v-show="current===1">
+
+
+      <Form ref="form1" :model="pinfo" :rules="rules_pinfo" :label-width="110">
+        <Row class="margin-top-10" :gutter="10">
+          <Col span="24">
+            <Card>
+              <p slot="title">
+                1.填写商品信息
+              </p>
+                <FormItem label="商品标题" prop="product_name">
+                  <Input type="text" placeholder="" v-model="pinfo.product_name"></Input>
+                </FormItem>
+                <FormItem label="商品链接" prop="product_url">
+                  <Input type="text" placeholder="" v-model="pinfo.product_url"></Input>
+                </FormItem>
+                <FormItem label="商品主图">
+                  <Upload action="//jsonplaceholder.typicode.com/posts/">
+                    <Button type="ghost" icon="ios-cloud-upload-outline">上传</Button>
+                  </Upload>
+                </FormItem>
+                <FormItem label="每人购买" prop="product_count">
+                  <InputNumber :max="500" :min="1" v-model="pinfo.product_count"></InputNumber> 件
+                </FormItem>
+                <FormItem label="商品售价" prop="product_actual_price">
+                  <InputNumber :max="100000" :precision="2" :min="1" v-model="pinfo.product_actual_price"></InputNumber> 元
+                </FormItem>
+                <FormItem label="搜索展示价格" prop="product_public_price">
+                  <InputNumber :max="100000" :precision="2" :min="1" v-model="pinfo.product_public_price"></InputNumber> 元
+                </FormItem>
+                <FormItem label="商品类目">
+                  <Select placeholder="选择任务类型" v-model="pinfo.splm" style="width:150px;">
+                    <Option value="ziran">综合排序</Option>
+                    <Option value="ziran1">销量优先</Option>
+                    <Option value="zira2n">价格从低到高</Option>
+                    <Option value="zira3n">价格从高到低</Option>
+                    <Option value="zir4an">信用排序</Option>
+                  </Select>
+                </FormItem>
+                <FormItem label="运费方式">
+                  <RadioGroup v-model="pinfo.product_yffs">
+                    <Radio label="0">包邮</Radio>
+                    <Radio label="1">不包邮</Radio>
+                  </RadioGroup>
+                </FormItem>
+              <!-- </Form> -->
+            </Card>
+          </Col>
+        </Row>
+        <Row class="margin-top-10" :gutter="10">
+          <Col span="24">
+            <Card>
+              <p slot="title">
+                2.如何找到您的商品：(提供相应信息以便用户模拟真实购物流程)
+              </p>
+                <FormItem label="商品排序方式" prop="title">
+                  <Select placeholder="选择商品排序方式" v-model="pinfo.order_method" style="width:150px;">
+                    <Option value="1">综合排序</Option>
+                    <Option value="2">销量优先</Option>
+                    <Option value="3">价格从低到高</Option>
+                    <Option value="4">价格从高到低</Option>
+                    <Option value="5">信用排序</Option>
+                  </Select>
+                </FormItem>
+
+                <FormItem label="价格区间">
+                  <InputNumber :max="10000" :min="1" v-model="pinfo.start_price"></InputNumber> 元 -   <InputNumber :max="10000" :min="1" v-model="pinfo.end_price"></InputNumber> 元
+                </FormItem>
+                <FormItem label="商品所在地">
+                  <show-area @showParentCity="getcity($event)" :city="pinfo.goods_address" style="display:inline-block;"></show-area>
+                </FormItem>
+            </Card>
+          </Col>
+        </Row>
+      </Form>
+
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              3.选择任务类型和单数
+            </p>
+            <div>
+              <Card>
+                <p slot="title">
+                  <i-switch v-model="commonKey1" size="small"></i-switch>普通好评任务 ( 默认为5星无评价内容，如需评价请备注，但不可规定评价内容 )
+                </p>
+                <div v-if="commonKey1" class="searchnew">
+                  <div class="searchitemnew" v-for="(item,index) in keywords1" :key="index">
+                    <span class="tit">搜索关键词</span>
+                    <Input type="text" v-model="item.keyword" style="width:180px;"></Input>
+                    <span>添加垫付</span>
+                    <InputNumber :max="10000" :min="1" v-model="item.num"></InputNumber>
+                    单
+                    <Button v-if="index>0" @click="delkeywords1(index)" type="error" size="small">删除</Button>
+                  </div>
+                  <Button @click="addkeywords1" type="primary" icon="plus" size="small">添加关键词</Button>
+                </div>
+              </Card>
+
+              <Card class="margin-top-10">
+                <p slot="title">
+                  <i-switch v-model="commonKey2" size="small"></i-switch>指定文字好评任务 (文字好评任务佣金 + 3金/单 )
+                </p>
+                <div v-if="commonKey2" class="searchnew">
+                  <div class="searchitemnew" v-for="(item,index) in keywords2" :key="index">
+                    <span class="tit">搜索关键词</span>
+                    <Input type="text" v-model="item.keyword" style="width:180px;"></Input>
+                    <span>添加垫付</span>
+                    <InputNumber :max="1" :min="1" v-model="item.num"></InputNumber>
+                    单
+                    <Button v-if="index>0" @click="delkeywords2(index)" type="error" size="small">删除</Button>
+                    <div class="margin-top-10">
+                      <Input type="textarea" v-model="item.content" :autosize="{minRows: 3,maxRows: 5}" placeholder="限100字内..."></Input>
+                    </div>
+
+                  </div>
+                  <Button @click="addkeywords2" type="primary" icon="plus" size="small">添加关键词</Button>
+                </div>
+              </Card>
+
+              <div class="crontab-setting">
+                <div class="title">发布时间设置</div>
+                <div class="time-item" v-for="(item,index) in crontabs" :key="index">
+                  开始时间：<DatePicker type="datetime" format="yyyy-MM-dd HH:mm" placeholder="选择要发布的开始时间" style="width: 200px"></DatePicker>
+                  每隔 <InputNumber :max="1000" :min="1" v-model="item.intervalTime"></InputNumber>分钟放出1单
+                  共放 <InputNumber :max="1000" :min="1" v-model="item.releaseCount"></InputNumber>单
+                  <Button v-if="index>0" @click="delContrab(index)" type="error" size="small">删除</Button>
+                </div>
+
+                <Button @click="addContrab" type="primary" icon="plus" size="small">添加放单计划</Button>
+              </div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+
+      <!-- <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              2.如何找到您的商品：(提供相应信息以便用户模拟真实购物流程)
+            </p>
+            <div class="keywords">
+              <div class="keyword-block" v-for="(item,index) in data.keywords" :key="index">
+                <Button v-if="index>0" @click="delKeyword(index)" class="keyword-del" type="error" size="small">删除</Button>
+                <div class="key-tit">关键字来源{{index+1}}</div>
+                <div class="keytit">第一步： 让大家搜索关键词进入列表</div>
+                <div><Input type="text" v-model="item.keyword"></Input></div>
+                <div class="keytit">第二步： 告送买家商品服务(非选项，如果商品靠后时，便于买家搜索)</div>
+                <div>
+                  <CheckboxGroup v-model="item.service">
+                    <Checkbox label="包邮"></Checkbox>
+                    <Checkbox label="天猫"></Checkbox>
+                    <Checkbox label="全球购"></Checkbox>
+                    <Checkbox label="消费者保障"></Checkbox>
+                    <Checkbox label="淘金币抵钱"></Checkbox>
+                    <Checkbox label="货到付款"></Checkbox>
+                    <Checkbox label="7+天退换"></Checkbox>
+                    <Checkbox label="花呗分期"></Checkbox>
+                    <Checkbox label="天猫超市"></Checkbox>
+                    <Checkbox label="天猫国际"></Checkbox>
+                    <Checkbox label="通用排序"></Checkbox>
+                  </CheckboxGroup>
+                </div>
+                <div class="keytit">第三步： 让买家用筛选器缩小范围(非选项，如果商品靠后时，便于买家搜索)</div>
+                <div>价格：<InputNumber :max="10000" :min="1" v-model="item.pricearea[0]"></InputNumber> 元 -   <InputNumber :max="10000" :min="1" v-model="item.pricearea[1]"></InputNumber> 元
+                | 商品所在地: <show-area @showParentCity="getcity($event,index)" :city="item.productarea" style="display:inline-block;"></show-area>| 商品排序:
+                  <Select placeholder="选择任务类型" v-model="item.productorder" style="width:150px;">
+                    <Option value="ziran">综合排序</Option>
+                    <Option value="ziran1">销量优先</Option>
+                    <Option value="zira2n">价格从低到高</Option>
+                    <Option value="zira3n">价格从高到低</Option>
+                    <Option value="zir4an">信用排序</Option>
+                  </Select>
+
+
+                </div>
+              </div>
+              <div class="keyword-block">
+                <Button @click="addKeyword" type="primary" icon="plus" size="small">添加关键词</Button> (最多可添加9个)
+              </div>
+            </div>
+          </Card>
+        </Col>
+      </Row> -->
+    </div>
+
+    <!-- <div class="step-block" v-show="current===2">
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              <Icon type="mouse"></Icon>
+              任务投放
+            </p>
+            <Form :label-width="80">
+              <FormItem label="订单总数量">
+                <RadioGroup v-model="data.ordernum">
+                  <Radio label="1">1单</Radio>
+                  <Radio label="3">3单</Radio>
+                  <Radio label="5">5单</Radio>
+                  <Radio label="10">10单</Radio>
+                  <Radio label="20">20单</Radio>
+                  <Radio label="100">100单</Radio>
+                  <Radio label="">自定义</Radio>
+                  <InputNumber :precision="0" :max="10000" :min="1" v-model="data.ordernum"></InputNumber>
+                   单
+                </RadioGroup>
+              </FormItem>
+              <FormItem label="订单数量">
+                <div>注:您所有关键词的订单数量总和要等于步骤1所填订单数量哦,每个关键词订单数量最低为1,不能为0哦</div>
+                <span v-for="(item,index) in data.keywords" :key="index">
+                  {{item.keyword}}: <InputNumber :precision="0" :max="10000" :min="1" v-model="item.num"></InputNumber> 单
+                </span>
+              </FormItem>
+              <FormItem label="下单提示">
+                <Input type="textarea" v-model="data.xdts" :autosize="{minRows: 3,maxRows: 5}" placeholder="买家接任务时可看见该提示，提示内容自由填写，如：商品在第*页*行、聊天时不要问发货地和哪家快递等。属可选项，限100字内..."></Input>
+              </FormItem>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+    </div> -->
+
+    <!-- <div class="step-block" v-show="current===2">
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              <Icon type="mouse"></Icon>
+              增值服务
+            </p>
+            增值服务即将开放
+          </Card>
+        </Col>
+      </Row>
+    </div> -->
+
+    <div class="step-block" v-show="current===2">
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              <Icon type="mouse"></Icon>
+              核对信息
+            </p>
+            <!-- <div>店铺名称：店铺一</div>
+            <div>店铺首页网址: </div> -->
+            <div class="hedui-tit">任务信息</div>
+            <div class="hedui-cont">
+              <div class="hedui-pic">
+                <img :src="data.spzt" alt="">
+              </div>
+              <div class="hedui-info">
+                <div>商品标题: <a :href="data.link">{{data.title}}</a></div>
+                <div>商品售价: {{data.spsj}}  | 搜索展示价: {{data.ssjg}}</div>
+                <div>店铺名称: {{data.shopname}}</div>
+              </div>
+            </div>
+            <div class="hedui-tit">价格信息</div>
+            <div class="ivu-table-wrapper zdy">
+              <div class="ivu-table ivu-table-default ivu-table-stripe">
+                <div class="ivu-table-header">
+                  <table cellspacing="0" cellpadding="0" border="0" >
+                    <thead>
+                      <tr>
+                        <th class="">
+                          <div class="ivu-table-cell">
+                            <span class="">分类</span>
+                          </div>
+                        </th>
+                        <th class="">
+                          <div class="ivu-table-cell">
+                            <span class="">费用明细</span>
+                          </div>
+                        </th>
+                        <th class="">
+                          <div class="ivu-table-cell">
+                            <span class="">小计</span>
+                          </div>
+                        </th>
+                        <th class="">
+                          <div class="ivu-table-cell">
+                            <span class="">合计</span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                  </table>
+                </div>
+                <div class="ivu-table-body">
+                  <table cellspacing="0" cellpadding="0" border="0" >
+                    <tbody class="ivu-table-tbody">
+                      <tr class="ivu-table-row">
+                        <td>
+                          <div class="ivu-table-cell">
+                            <span>押金</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+                            <div class="splist">
+                              <div>商品: {{data.spsj}}元</div>
+                              <div>订单总数量: {{data.ordernum}}单</div>
+                              <div>每人购买数量: {{data.mrgm}}个</div>
+                              <div>返款保障金：每单5元</div>
+
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+                            小计: {{(data.spsj * data.mrgm) + 5}} 元
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+
+                            合计: {{(data.spsj * data.mrgm) + 5}} x {{data.ordernum}} = {{((data.spsj * data.mrgm) + 5) * data.ordernum}} 元
+                          </div>
+                        </td>
+                      </tr>
+                      <tr class="ivu-table-row">
+                        <td>
+                          <div class="ivu-table-cell">
+                            <span>元宝</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+                            <div class="splist">
+                              <div>平台服务费： 11 个</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+                            小计: 11 个
+                          </div>
+                        </td>
+                        <td>
+                          <div class="ivu-table-cell">
+
+                            合计: {{data.ordernum * 11}} 个
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="tongji">
+              费用合计： 押金 {{((data.spsj * data.mrgm) + 5) * data.ordernum}}元 元宝： {{data.ordernum * 11}}个
+            </div>
+          </Card>
+        </Col>
+      </Row>
+      <!-- <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              <Icon type="mouse"></Icon>
+              商品信息
+            </p>
+            <div>店铺名称：店铺一</div>
+            <div>店铺首页网址: </div>
+          </Card>
+        </Col>
+      </Row> -->
+    </div>
+
+    <Row class="updownarea" :gutter="10">
+      <ButtonGroup>
+        <Button type="primary" @click="pre()" :disabled="current === 0">
+            <Icon type="chevron-left"></Icon>
+            上一步
+        </Button>
+        <Button type="primary" @click="next()" :disabled="current === 3">
+            下一步
+            <Icon type="chevron-right"></Icon>
+        </Button>
+      </ButtonGroup>
+      <Button v-if="current === 3" @click="payment" style="margin-left:20px;" type="success">确定信息并完成付款</Button>
+    </Row>
+  </div>
+</template>
+<script>
+import _ from 'lodash';
+import { shopListUse } from '@/server/api';
+import showArea from './shoparea';
+
+
+export default {
+  name: 'addTask',
+  components: {
+    showArea,
+  },
+  data() {
+    return {
+      value1: 1,
+      value2: 2,
+      switch1: true,
+      ruleValidate1: {
+
+      },
+      current: 0,
+      leimu: [],
+      // 表单规则==================================================
+      rules_pinfo: {
+        product_name: [
+          { required: true, message: '必填项', trigger: 'blur' },
+        ],
+        product_url: [
+          { required: true, message: '必填项', trigger: 'blur' },
+        ],
+        product_count: [
+          { required: true, message: '必填项', trigger: 'change' },
+        ],
+        product_actual_price: [
+          { required: true, message: '必填项', trigger: 'change' },
+        ],
+        product_public_price: [
+          { required: true, message: '必填项', trigger: 'change' },
+        ],
+      },
+
+
+      // 第一步====================================================
+      currentPlatform: '', // 当前选择的所属平台
+      shoplist: [],
+
+      step1: {
+        sid: '',
+        tid: '',
+        fantype: '1',
+      },
+      // 第二步====================================================
+      commonKey1: false, // 普通好评开关
+      commonKey2: false, // 好评带文字开关
+
+
+      pinfo: {
+        product_name: '???新科无线话筒手机全民k歌麦克风蓝牙家用电视唱歌神器音响一体全名k歌通用电容录音全能儿童卡拉ok话筒', // 商品标题
+        product_url: 'https://detail.tmall.com/item.htm?id=567857881289&ali_refid=a3_430583_1006:1152204712:N:%E8%AF%9D%E7%AD%92%E9%9F%B3%E5%93%8D%E4%B8%80%E4%BD%93%E9%BA%A6%E5%85%8B%E9%A3%8E:1ea56e6394671de79f17dadda200884f&ali_trackid=1_1ea56e6394671de79f17dadda200884f&spm=a230r.1.14.1&sku_properties=165354720:6536025', // 商品链接
+        product_img: 'https://img.alicdn.com/imgextra/https://img.alicdn.com/imgextra/i3/3622410505/O1CN011FbKSg2lYKyKlWt_!!3622410505.jpg_430x430q90.jpg', // 商品主图地址
+        product_count: 2, // 每人购买
+        product_actual_price: 159, // 商品售价
+        product_public_price: 180, // 搜索价格
+        product_yffs: '1', // 运费方式
+        // 如何找到商品
+        order_method: '1', // 排序方式
+        start_price: 1, // 价格区间
+        end_price: 100,
+        goods_address: '全国', // 商品所在地
+        order_msg: '', // 订单留言
+      },
+      // 普通好评任务关键词
+      keywords1: [
+        {
+          keyword: '',
+          num: 1,
+        },
+      ],
+      // 好评带文字评价
+      keywords2: [
+        {
+          keyword: '',
+          num: 1,
+          content: '',
+        },
+      ],
+
+      // 第三步====================================================
+
+      data: {
+
+      },
+      // 计划任务
+      crontabs: [
+        {
+          startTime: '',
+          intervalTime: 10, // 每隔X分钟
+          releaseCount: 100, // 一共放出的单数
+        },
+      ],
+    };
+  },
+  created() {
+    this.getShopList();
+  },
+  methods: {
+    changeShop(val) {
+      const ty = _.find(this.shoplist, { id: val });
+      this.currentPlatform = ty.pid.toString();
+      this.step1.tid = '';
+    },
+
+    // 获取店铺数据列表
+    getShopList() {
+      shopListUse().then(res => {
+        this.shoplist = res.data;
+      });
+    },
+    pre() {
+      if (this.current !== 0) {
+        this.current = this.current - 1;
+      }
+    },
+    next() {
+      if (this.current === 0) {
+        if (this.step1.id === '' || this.step1.tid === '') {
+          this.$Message.warning('请选择完全再进行下一步!');
+        } else {
+          this.current = 1;
+        }
+      }
+      if (this.current === 1) {
+        this.$refs.form1.validate(valid => {
+          if (valid) {
+            this.$Message.success('Success!');
+          } else {
+            this.$Message.error('Fail!');
+          }
+        });
+        console.log('重要啊');
+      }
+    },
+
+    // 添加关键词
+    addKeyword() {
+      if (this.data.keywords.length < 10) {
+        const data = {
+          keyword: '',
+          service: [],
+          pricearea: [1, 100],
+          productarea: '全国',
+          productorder: '',
+        };
+        this.data.keywords.push(data);
+      }
+    },
+    delKeyword(index) {
+      this.data.keywords.splice(index, 1);
+    },
+    // 普通关键词任务
+    addkeywords1() {
+      if (this.keywords1.length < 5) {
+        const data = {
+          keyword: '',
+          num: 1,
+        };
+        this.keywords1.push(data);
+      }
+    },
+    delkeywords1(index) {
+      this.keywords1.splice(index, 1);
+    },
+    // 关键词带评价任务
+    addkeywords2() {
+      if (this.keywords2.length < 5) {
+        const data = {
+          keyword: '',
+          num: 1,
+        };
+        this.keywords2.push(data);
+      }
+    },
+    delkeywords2(index) {
+      this.keywords2.splice(index, 1);
+    },
+    // 添加计划任务
+    addContrab() {
+      const data = {
+        startTime: '',
+        intervalTime: 10, // 每隔X分钟
+        releaseCount: 100, // 一共放出的单数
+      };
+      this.crontabs.push(data);
+    },
+    delContrab(index) {
+      this.crontabs.splice(index, 1);
+    },
+    // 子组件传给父组件的city
+    getcity(event) {
+      this.pinfo.goods_address = event;
+    },
+    // 完成付款
+    payment() {
+      this.$Modal.confirm({
+        title: '友情提示',
+        content: '确定付款了吗？任务发布成功，不能再次修改！',
+        onOk: () => {
+          this.$Message.info('完成付款');
+        },
+        onCancel: () => {
+          this.$Message.info('取消付款');
+        },
+      });
+    },
+  },
+};
+</script>
+
+<style scoped>
+  .shop-block {
+    padding: 15px 15px;
+    border: 1px solid #eee;
+    width: 200px;
+    height: 80px;
+    margin-right: 10px;
+    display: inline-block;
+  }
+  .shop-block.active {
+    border-color: #2d8cf0;
+  }
+  .tongji {
+    padding: 15px 15px;
+    text-align: right;
+  }
+  .zdy table{
+    width: 100%;
+  }
+  .updownarea{
+    text-align: center;
+    padding: 20px 15px;
+  }
+  .keywords {
+    font-size: 12px;
+  }
+  .keyword-block {
+    position: relative;
+    padding: 20px 30px;
+  }
+  .keytit {
+    padding: 15px 0;
+  }
+  .keyword-del {
+    position: absolute;
+    right: 30px;
+    top: 10px;
+  }
+  .hedui-tit {
+    font-weight: bold;
+    padding: 15px 0;
+  }
+  .hedui-cont {
+    overflow: hidden;
+  }
+  .hedui-pic {
+    width: 230px;
+    margin-right: 20px;
+    float: left;
+  }
+  .hedui-pic img {
+    max-width: 100%;
+  }
+  .hedui-info {m
+    padding: 20px 20px;
+  }
+  .searchitemnew {
+    margin-bottom: 15px;
+    font-size: 12px;
+  }
+  .crontab-setting{
+    font-size: 12px;
+    padding: 10px 10px;
+  }
+  .crontab-setting .title {
+    font-size: 14px;
+    margin-bottom: 15px;
+  }
+  .crontab-setting .time-item {
+    margin-bottom: 10px;
+
+  }
+</style>
