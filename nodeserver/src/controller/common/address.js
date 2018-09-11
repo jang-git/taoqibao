@@ -8,8 +8,10 @@ module.exports = class extends think.Controller {
   }
 
   async testAction() {
-    const a = this.model('task');
-    const ccc = await a.updateBypay();
-    think.logger.info(ccc);
+    // const a = this.model('task');
+    // const ccc = await a.updateBypay();
+    // think.logger.info(ccc);
+
+    think.logger.warn(selectPrice(100));
   }
 };

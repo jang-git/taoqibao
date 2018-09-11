@@ -111,8 +111,7 @@ export const orderList = data => axios.get('/admin/orderList', data);
 /**
  * 登录
  */
-export const loginBak = data => axios.post('ceo/auth/login', data);
-export const login = data => axios.post('user/login', data);
+export const login = data => axios.post('ceo/auth/login', data);
 /**
  * 注销
  */
