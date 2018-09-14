@@ -29,33 +29,33 @@
                 <th width="30%">小计</th>
               </tr>
 
-              <tr v-for="item in task_charge.yj.data" :key="item.type" :class="item.type === 1 ? 'top-border' : ''">
-                <td :rowspan="task_charge.yj.data.length" v-if="item.type === 1">佣金</td>
+              <tr v-for="(item,key) in yongjin" :key="item.id" :class="key === 0 ? 'top-border' : ''">
+                <td :rowspan="yongjin.length" v-if="key === 0">佣金</td>
                 <td>
                   <div class="detail" style="text-align: left;padding-left: 55px;">
-                    <p>{{chargeSort[item.type]}} {{item.price}}金/单</p>
+                    <p>{{chargeSort[item.pricetype]}} {{item.price}}金/单</p>
                   </div>
                 </td>
                 <td>{{item.num}}单</td>
-                <td>{{item.total}}金</td>
+                <td>{{item.total_amount}}金</td>
               </tr>
-              <tr v-for="item in task_charge.bj.data" :key="item.type" :class="item.type === 3 ? 'top-border' : ''">
-                <td :rowspan="task_charge.bj.data.length" v-if="item.type === 3">本金</td>
+              <tr v-for="(item,key) in benjin" :key="item.id" :class="key === 0 ? 'top-border' : ''">
+                <td :rowspan="benjin.length" v-if="key === 0">本金</td>
                 <td>
                   <div class="detail" style="text-align: left;padding-left: 55px;">
-                    <p>{{chargeSort[item.type]}} {{item.price}} 元/单</p>
+                    <p>{{chargeSort[item.pricetype]}} {{item.price}} 元/单</p>
                   </div>
                 </td>
                 <td>{{item.num}}单</td>
-                <td>{{item.total}}元</td>
+                <td>{{item.total_amount}}元</td>
               </tr>
 
             </tbody>
             </table>
 
             <div class="pay-total">
-              合计单数： <span class="striking">{{task_charge.num}}</span>单<br>
-              合计支付： 本金<span class="money">{{task_charge.bj.price}}</span>元 +  佣金<span class="money">{{task_charge.yj.price}}</span>金 = {{task_charge.total}} 元
+              合计单数： <span class="striking">{{totalNum}}</span>单<br>
+              合计支付： 本金<span class="money">{{bjPrice}}</span>元 +  佣金<span class="money">{{yjPrice}}</span>金
             </div>
 
             <div class="pay-method">
@@ -76,6 +76,7 @@
 </template>
 
 <script>
+import _ from 'lodash';
 import { userinfo, step2, payMent } from '@/server/api';
 
 export default {
@@ -83,7 +84,10 @@ export default {
   data() {
     return {
       balance: 0, // 用户余额
-      chargeSort: ['', '基础佣金', '文字好评', '平台返款服务费', '返款本金'],
+      chargeSort: ['', '基础佣金', '文字好评', '图文评价', '平台返款服务费', '返款本金'],
+      totalNum: 0,
+      yjPrice: 0,
+      bjPrice: 0,
       task_charge: {
         num: 0, // 总单数
         total: 0, // 总价格
@@ -100,6 +104,8 @@ export default {
           ],
         },
       },
+      yongjin: [],
+      benjin: [],
     };
   },
   created() {
@@ -118,11 +124,16 @@ export default {
     },
     fetchData() {
       const data = {
-        taskid: this.$route.params.taskid,
+        taskid: Number(this.$route.params.taskid),
       };
       step2(data).then(res => {
         if (res.code === 0) {
-          this.task_charge = res.data;
+          this.yongjin = res.data.yj;
+          this.benjin = res.data.bj;
+          this.bjPrice = _.sumBy(this.benjin, 'total_amount');
+          this.yjPrice = _.sumBy(this.yongjin, 'total_amount');
+          // this.totalNum = this.yongjin
+          // this.task_charge = res.data;
         } else {
           this.$Message.error('数据错误');
         }

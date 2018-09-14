@@ -21,10 +21,25 @@
         <Col span="24">
           <Card>
             <p slot="title">
-              1.选择您的店铺 (如果没有，请先绑定店铺)
+              1.选择任务类型
+            </p>
+            <RadioGroup v-model="step1.tid" vertical @on-change="changeTasktype">
+              <Radio v-for="(item,index) in platformList" :key="index" :label="item.id">{{item.tasktype_name}}</Radio>
+              <!-- <Radio label="102" :disabled="currentPlatform !== '102'">手机拼多多</Radio>
+              <Radio label="103" :disabled="currentPlatform !== '103'">手机京东</Radio> -->
+            </RadioGroup>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row class="margin-top-10" :gutter="10">
+        <Col span="24">
+          <Card>
+            <p slot="title">
+              2.选择您的店铺 (如果没有，请先绑定店铺)
             </p>
             <RadioGroup v-model="step1.sid" vertical @on-change="changeShop">
-              <Radio v-for="(item,index) in shoplist" :key="index" :label="item.id">
+              <Radio v-for="(item,index) in shoplist" :key="index" :disabled="currentTasktype.platform_id !== item.pid" :label="item.id">
                   <Icon type="social-apple"></Icon>
                   <span>{{item.shop_name}}</span>
               </Radio>
@@ -32,20 +47,7 @@
           </Card>
         </Col>
       </Row>
-      <Row class="margin-top-10" :gutter="10">
-        <Col span="24">
-          <Card>
-            <p slot="title">
-              2.选择任务类型
-            </p>
-            <RadioGroup v-model="step1.tid" vertical>
-              <Radio v-for="(item,index) in platformList" :key="index" :label="item.id" :disabled="currentPlatform !== item.id">{{item.platform_name}}</Radio>
-              <!-- <Radio label="102" :disabled="currentPlatform !== '102'">手机拼多多</Radio>
-              <Radio label="103" :disabled="currentPlatform !== '103'">手机京东</Radio> -->
-            </RadioGroup>
-          </Card>
-        </Col>
-      </Row>
+
       <Row class="margin-top-10" :gutter="10">
         <Col span="24">
           <Card>
@@ -135,10 +137,10 @@
             <div>
               <Card>
                 <p slot="title">
-                  <i-switch v-model="taskKeywords.keywords1.ischeck" size="small"></i-switch>普通好评任务 ( 默认为5星无评价内容，如需评价请备注，但不可规定评价内容 )
+                  <i-switch v-model="keywords1.ischeck" size="small"></i-switch>普通好评任务 ( 默认为5星无评价内容，如需评价请备注，但不可规定评价内容 )
                 </p>
-                <div v-if="taskKeywords.keywords1.ischeck" class="searchnew">
-                  <div class="searchitemnew" v-for="(item,index) in taskKeywords.keywords1.data" :key="index">
+                <div v-if="keywords1.ischeck" class="searchnew">
+                  <div class="searchitemnew" v-for="(item,index) in keywords1.data" :key="index">
                     <span class="tit">搜索关键词</span>
                     <Input type="text" v-model="item.keyword" style="width:180px;"></Input>
                     <span>添加垫付</span>
@@ -152,10 +154,10 @@
 
               <Card class="margin-top-10">
                 <p slot="title">
-                  <i-switch v-model="taskKeywords.keywords2.ischeck" size="small"></i-switch>指定文字好评任务 (文字好评任务佣金 + 3金/单 )
+                  <i-switch v-model="keywords2.ischeck" size="small"></i-switch>指定文字好评任务 (文字好评任务佣金 + 3金/单 )
                 </p>
-                <div v-if="taskKeywords.keywords2.ischeck" class="searchnew">
-                  <div class="searchitemnew" v-for="(item,index) in taskKeywords.keywords2.data" :key="index">
+                <div v-if="keywords2.ischeck" class="searchnew">
+                  <div class="searchitemnew" v-for="(item,index) in keywords2.data" :key="index">
                     <span class="tit">搜索关键词</span>
                     <Input type="text" v-model="item.keyword" style="width:180px;"></Input>
                     <span>添加垫付</span>
@@ -282,6 +284,7 @@
 </template>
 <script>
 import _ from 'lodash';
+import moment from 'moment';
 import { shopListUse, addTaskData, platform } from '@/server/api';
 import showArea from './shoparea';
 
@@ -325,7 +328,8 @@ export default {
       productInfoStatus: false,
 
       // 第一步====================================================
-      currentPlatform: '', // 当前选择的所属平台
+      // currentPlatform: '', // 当前选择的所属平台
+      currentTasktype: '', // 当前选择的任务类型
       currentShop: '', // 当前选择的店铺
       shoplist: [], // 商铺列表
       platformList: [], // 平台列表
@@ -351,30 +355,33 @@ export default {
         order_msg: '', // 订单留言
       },
 
-      taskKeywords: {
-        // 普通好评任务关键词
-        keywords1: {
-          ischeck: true, // 是否选中
-          data: [
-            {
-              keyword: '地瓜',
-              num: 22,
-              type: 1, // 任务类型
-            },
-          ],
-        },
-        // 好评带文字评价
-        keywords2: {
-          ischeck: false,
-          data: [
-            {
-              keyword: '红薯',
-              num: 1,
-              content: '真的很好吃啊',
-              type: 2,
-            },
-          ],
-        },
+      // 普通好评任务关键词
+      keywords1: {
+        ischeck: true, // 是否选中
+        data: [
+          {
+            keyword: '地瓜',
+            num: 22,
+            type: 1, // 任务类型
+          },
+          {
+            keyword: '红薯',
+            num: 2,
+            type: 1, // 任务类型
+          },
+        ],
+      },
+      // 好评带文字评价
+      keywords2: {
+        ischeck: false,
+        data: [
+          {
+            keyword: '红薯',
+            num: 1,
+            content: '真的很好吃啊',
+            type: 2,
+          },
+        ],
       },
 
 
@@ -391,7 +398,7 @@ export default {
           releaseCount: 12, // 一共放出的单数
         },
         {
-          startTime: new Date(),
+          startTime: '2018-09-11T16:52:41.135Z',
           intervalTime: 10, // 每隔X分钟
           releaseCount: 10, // 一共放出的单数
         },
@@ -456,7 +463,25 @@ export default {
     },
     // 提交任务信息
     tijiaoTask() {
-      this.orderDetail();
+      // this.orderDetail();
+      // console.log(this.crontabs);
+      const crontabData = _.map(this.crontabs, val => {
+        const data = {
+          intervalTime: val.intervalTime,
+          releaseCount: val.releaseCount,
+          startTime: moment(val.startTime).unix(),
+        };
+        return data;
+      });
+
+      let keywords = [];
+      if (this.keywords1.ischeck) {
+        keywords = keywords.concat(this.keywords1.data);
+      }
+      if (this.keywords2.ischeck) {
+        keywords = keywords.concat(this.keywords2.data);
+      }
+
       const dataTask = {
         tid: this.step1.tid,
         sid: this.step1.sid,
@@ -464,8 +489,8 @@ export default {
         fantype: this.step1.fantype,
         moneyInfo: this.task_charge,
         productInfo: this.pinfo,
-        crontabInfo: this.crontabs,
-        keywordInfo: this.taskKeywords,
+        crontabInfo: crontabData,
+        keywordInfo: keywords,
       };
 
       addTaskData(dataTask).then(res => {
@@ -524,14 +549,15 @@ export default {
       this.task_charge.bj.price = _.sumBy(this.task_charge.bj.data, 'total').toFixed(2);
       this.task_charge.total = (_.sumBy(this.task_charge.yj.data, 'total') + _.sumBy(this.task_charge.bj.data, 'total')).toFixed(2);
     },
+    // 切换任务类型
+    changeTasktype(val) {
+      this.currentTasktype = _.find(this.platformList, { id: val });
+    },
     // 切换店铺
     changeShop(val) {
       const ty = _.find(this.shoplist, { id: val });
       this.currentShop = ty;
-      this.currentPlatform = ty.pid;
-      this.step1.tid = '';
     },
-
     // 获取店铺数据列表
     getShopList() {
       shopListUse().then(res => {
@@ -566,18 +592,18 @@ export default {
           return false;
         }
 
-        if (this.taskKeywords.keywords1.ischeck === false && this.taskKeywords.keywords2.ischeck === false) {
+        if (this.keywords1.ischeck === false && this.keywords2.ischeck === false) {
           this.$Message.error('请至少选择一种任务类型');
           return false;
         }
 
-        if (this.taskKeywords.keywords1.ischeck) {
+        if (this.keywords1.ischeck) {
           if (!this.jianceKeyword1()) {
             this.$Message.error('请完善普通好评关键词信息');
             return false;
           }
         }
-        if (this.taskKeywords.keywords2.ischeck) {
+        if (this.keywords2.ischeck) {
           if (!this.jianceKeyword2()) {
             this.$Message.error('请完善关指定文字好评键词信息');
             return false;
@@ -601,12 +627,19 @@ export default {
     jianceNum() {
       let num1 = 0;
       let num2 = 0;
-      _.map(this.taskKeywords, (value, key) => {
-        console.log(key);
-        if (value.ischeck) {
-          num1 += _.sumBy(value.data, 'num');
-        }
-      });
+      if (this.keywords1.ischeck) {
+        num1 += _.sumBy(this.keywords1.data, 'num');
+      }
+      if (this.keywords2.ischeck) {
+        num1 += _.sumBy(this.keywords2.data, 'num');
+      }
+      // _.map(this.taskKeywords, (value, key) => {
+      //   console.log(value);
+      //   console.log(key);
+      //   if (value.ischeck) {
+      //     num1 += _.sumBy(value.data, 'num');
+      //   }
+      // });
 
       num2 = _.sumBy(this.crontabs, 'releaseCount');
 
@@ -619,7 +652,6 @@ export default {
     },
     jianceTimer() {
       for (let i = 0; i < this.crontabs.length; i += 1) {
-        console.log(this.crontabs[i]);
         if (!this.crontabs[i].startTime || !this.crontabs[i].intervalTime || !this.crontabs[i].releaseCount) {
           return false;
         }
@@ -627,7 +659,7 @@ export default {
       return true;
     },
     jianceKeyword1() {
-      const datajian = this.taskKeywords.keywords1.data;
+      const datajian = this.keywords1.data;
       for (let i = 0; i < datajian.length; i += 1) {
         if (!datajian[i].keyword || !datajian[i].num) {
           return false;
@@ -636,7 +668,7 @@ export default {
       return true;
     },
     jianceKeyword2() {
-      const datajian = this.taskKeywords.keywords2.data;
+      const datajian = this.keywords2.data;
       for (let i = 0; i < datajian.length; i += 1) {
         if (!datajian[i].keyword || !datajian[i].num || !datajian[i].content) {
           return false;
@@ -646,29 +678,31 @@ export default {
     },
     // 普通关键词任务
     addkeywords1() {
-      if (this.taskKeywords.keywords1.data.length < 5) {
+      if (this.keywords1.data.length < 5) {
         const data = {
           keyword: '',
           num: 1,
+          type: 1,
         };
-        this.taskKeywords.keywords1.data.push(data);
+        this.keywords1.data.push(data);
       }
     },
     delkeywords1(index) {
-      this.taskKeywords.keywords1.data.splice(index, 1);
+      this.keywords1.data.splice(index, 1);
     },
     // 关键词带评价任务
     addkeywords2() {
-      if (this.taskKeywords.keywords2.data.length < 5) {
+      if (this.keywords2.data.length < 5) {
         const data = {
           keyword: '',
           num: 1,
+          type: 2,
         };
-        this.taskKeywords.keywords2.data.push(data);
+        this.keywords2.data.push(data);
       }
     },
     delkeywords2(index) {
-      this.taskKeywords.keywords2.data.splice(index, 1);
+      this.keywords2.data.splice(index, 1);
     },
     // 添加计划任务
     addContrab() {
