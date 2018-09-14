@@ -130,7 +130,7 @@ export const appRouter = [
         path: 'shop', title: '店铺管理', name: 'shop_setting', component: () => import('@/views/setting/shop.vue'),
       },
       {
-        path: 'index', title: '账户管理', name: 'tvmgroups_index', component: () => import('@/views/tvmgroups/tvmgroups.vue'),
+        path: 'index', title: '账户管理', name: 'tvmgroups_index', component: () => import('@/views/setting/shop.vue'),
       },
     ],
   },
