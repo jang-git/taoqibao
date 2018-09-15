@@ -157,3 +157,7 @@ export const step2 = data => axios.post('ceo/task/step2', data);
  * 支付订单
  */
 export const payMent = data => axios.post('ceo/task/payment', data);
+/**
+ * 获取七牛上传Token
+ */
+export const uploadToken = () => axios.get('common/upload/getQiniuToken', {});

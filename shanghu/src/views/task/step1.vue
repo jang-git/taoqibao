@@ -23,7 +23,7 @@
             <p slot="title">
               1.选择任务类型
             </p>
-            <RadioGroup v-model="step1.tid" vertical @on-change="changeTasktype">
+            <RadioGroup v-model="step1.task_type_id" vertical @on-change="changeTasktype">
               <Radio v-for="(item,index) in platformList" :key="index" :label="item.id">{{item.tasktype_name}}</Radio>
               <!-- <Radio label="102" :disabled="currentPlatform !== '102'">手机拼多多</Radio>
               <Radio label="103" :disabled="currentPlatform !== '103'">手机京东</Radio> -->
@@ -38,7 +38,7 @@
             <p slot="title">
               2.选择您的店铺 (如果没有，请先绑定店铺)
             </p>
-            <RadioGroup v-model="step1.sid" vertical @on-change="changeShop">
+            <RadioGroup v-model="step1.shop_id" vertical @on-change="changeShop">
               <Radio v-for="(item,index) in shoplist" :key="index" :disabled="currentTasktype.platform_id !== item.pid" :label="item.id">
                   <Icon type="social-apple"></Icon>
                   <span>{{item.shop_name}}</span>
@@ -78,9 +78,39 @@
                   <Input type="text" placeholder="" v-model="pinfo.product_url"></Input>
                 </FormItem>
                 <FormItem label="商品主图">
-                  <Upload action="http://127.0.0.1:8360/common/upload/task">
-                    <Button type="ghost" icon="ios-cloud-upload-outline">上传</Button>
+                  <div class="demo-upload-list" v-for="(item,index) in uploadList" :key="index">
+                    <template v-if="item.status === 'finished'">
+                        <img :src="item.url">
+                        <div class="demo-upload-list-cover">
+                            <Icon type="ios-eye-outline" @click.native="handleView(item.name)"></Icon>
+                            <Icon type="ios-trash-outline" @click.native="handleRemove(item)"></Icon>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <Progress v-if="item.showProgress" :percent="item.percentage" hide-info></Progress>
+                    </template>
+                  </div>
+                  <Upload
+                      ref="upload"
+                      :show-upload-list="false"
+                      :default-file-list="defaultList"
+                      :on-success="handleSuccess"
+                      :format="['jpg','jpeg','png']"
+                      :max-size="4096"
+                      :on-format-error="handleFormatError"
+                      :on-exceeded-size="handleMaxSize"
+                      :before-upload="handleBeforeUpload"
+                      type="drag"
+                      action="//upload-z2.qiniu.com/"
+                      :data="{token: qiniuToken}"
+                      style="display: inline-block;width:58px;">
+                      <div style="width: 58px;height:58px;line-height: 58px;">
+                          <Icon type="camera" size="20"></Icon>
+                      </div>
                   </Upload>
+                  <!-- <Upload action="http://127.0.0.1:8360/common/upload/task">
+                    <Button type="ghost" icon="ios-cloud-upload-outline">上传</Button>
+                  </Upload> -->
                 </FormItem>
                 <FormItem label="每人购买" prop="product_count">
                   <InputNumber :max="500" :min="1" v-model="pinfo.product_count"></InputNumber> 件
@@ -280,12 +310,15 @@
         任务支付成功后，平台将在工作时间（周一至周日 9:00~18：00）按任务发布顺序人工审核，请务必确认任务信息准确，合理安排任务发布时间，耐心等待2个小时左右。如需加快任务发布速度，请联系QQ客服开通做标签免审用户资格
       </div>
     </Modal>
+    <Modal title="View Image" v-model="visible">
+      <img :src="pinfo.product_img" v-if="visible" style="width: 100%">
+    </Modal>
   </div>
 </template>
 <script>
 import _ from 'lodash';
 import moment from 'moment';
-import { shopListUse, addTaskData, platform } from '@/server/api';
+import { shopListUse, addTaskData, platform, uploadToken } from '@/server/api';
 import showArea from './shoparea';
 
 
@@ -296,6 +329,15 @@ export default {
   },
   data() {
     return {
+      // 上传配置
+      defaultList: [],
+      imgName: '',
+      visible: false,
+      uploadList: [],
+      qiniuToken: '',
+      picDomain: '',
+
+
       wzhpyj: 3, // 文字好评的佣金价格
       jcyj: 10, // 基础佣金的价格
       ptfk: 1,
@@ -334,15 +376,15 @@ export default {
       shoplist: [], // 商铺列表
       platformList: [], // 平台列表
       step1: {
-        sid: '',
-        tid: '',
+        shop_id: '',
+        task_type_id: '',
         fantype: '1',
       },
       // 第二步====================================================
       pinfo: {
         product_name: '???新科无线话筒手机全民k歌麦克风蓝牙家用电视唱歌神器音响一体全名k歌通用电容录音全能儿童卡拉ok话筒', // 商品标题
         product_url: 'https://detail.tmall.com/item.htm?id=567857881289&ali_refid=a3_430583_1006:1152204712:N:%E8%AF%9D%E7%AD%92%E9%9F%B3%E5%93%8D%E4%B8%80%E4%BD%93%E9%BA%A6%E5%85%8B%E9%A3%8E:1ea56e6394671de79f17dadda200884f&ali_trackid=1_1ea56e6394671de79f17dadda200884f&spm=a230r.1.14.1&sku_properties=165354720:6536025', // 商品链接
-        product_img: 'https://img.alicdn.com/imgextra/https://img.alicdn.com/imgextra/i3/3622410505/O1CN011FbKSg2lYKyKlWt_!!3622410505.jpg_430x430q90.jpg', // 商品主图地址
+        product_img: '', // 商品主图地址
         product_count: 2, // 每人购买
         product_actual_price: 159, // 商品售价
         product_public_price: 180, // 搜索价格
@@ -412,36 +454,12 @@ export default {
           name: '佣金',
           price: 0,
           data: [
-            // {
-            //   type: 1, // 基础佣金
-            //   price: 15.00,
-            //   num: 15,
-            //   total: 150.00,
-            // },
-            // {
-            //   type: 2,
-            //   price: 15.00,
-            //   num: 15,
-            //   total: 150.00,
-            // },
           ],
         },
         bj: {
           name: '本金',
           price: 0,
           data: [
-            // {
-            //   type: 3,
-            //   price: 15.00,
-            //   num: 15,
-            //   total: 15,
-            // },
-            // {
-            //   type: 4,
-            //   price: 15.00,
-            //   num: 15,
-            //   total: 7500,
-            // },
           ],
         },
       },
@@ -452,13 +470,62 @@ export default {
     this.getPlatform();
     // console.log(this.task_charge);
   },
+  mounted() {
+    this.uploadList = this.$refs.upload.fileList;
+    this.getQiniu();
+  },
   methods: {
+    handleView(name) {
+      this.imgName = name;
+      this.visible = true;
+    },
+    handleRemove(file) {
+      const fileList = this.$refs.upload.fileList;
+      this.$refs.upload.fileList.splice(fileList.indexOf(file), 1);
+      this.pinfo.product_img = '';
+    },
+    handleSuccess(res, file) {
+      // console.log(res);
+      // console.log(this.uploadList);
+      // console.log(file);
+      const a = file;
+      a.url = this.picDomain + res.key;
+      a.name = res.key;
+      this.pinfo.product_img = file.url;
+    },
+    handleFormatError() {
+      this.$Notice.warning({
+        title: '格式要求',
+        desc: '请上传JPG或者PNG图片',
+      });
+    },
+    handleMaxSize(file) {
+      this.$Notice.warning({
+        title: '最大限制',
+        desc: `文件 ${file.name} 太大，不能超过4M.`,
+      });
+    },
+    handleBeforeUpload() {
+      const check = this.uploadList.length < 1;
+      if (!check) {
+        this.$Notice.warning({
+          title: '请删除图片再重新上传',
+        });
+      }
+      return check;
+    },
     // 获取平台数据
     getPlatform() {
       platform().then(res => {
         if (res.code === 0) {
           this.platformList = res.data;
         }
+      });
+    },
+    getQiniu() {
+      uploadToken().then(res => {
+        this.qiniuToken = res.data.token;
+        this.picDomain = res.data.domain;
       });
     },
     // 提交任务信息
@@ -483,14 +550,16 @@ export default {
       }
 
       const dataTask = {
-        tid: this.step1.tid,
-        sid: this.step1.sid,
+        task_type_id: this.step1.task_type_id,
+        shop_id: this.step1.shop_id,
         shop_name: this.currentShop.shop_name,
         fantype: this.step1.fantype,
         moneyInfo: this.task_charge,
         productInfo: this.pinfo,
         crontabInfo: crontabData,
         keywordInfo: keywords,
+        // keywords1: this.keywords1,
+        // keywords2: this.keywords2,
       };
 
       addTaskData(dataTask).then(res => {
@@ -591,7 +660,10 @@ export default {
           this.$Message.error('请完善商品信息');
           return false;
         }
-
+        if (this.pinfo.product_img === '') {
+          this.$Message.error('请上传商品主图');
+          return false;
+        }
         if (this.keywords1.ischeck === false && this.keywords2.ischeck === false) {
           this.$Message.error('请至少选择一种任务类型');
           return false;
@@ -738,6 +810,43 @@ export default {
 </script>
 
 <style scoped>
+  .demo-upload-list{
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    line-height: 60px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    position: relative;
+    box-shadow: 0 1px 1px rgba(0,0,0,.2);
+    margin-right: 4px;
+  }
+  .demo-upload-list img{
+      width: 100%;
+      height: 100%;
+  }
+  .demo-upload-list-cover{
+      display: none;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,.6);
+  }
+  .demo-upload-list:hover .demo-upload-list-cover{
+      display: block;
+  }
+  .demo-upload-list-cover i{
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      margin: 0 2px;
+  }
+
   .shop-block {
     padding: 15px 15px;
     border: 1px solid #eee;

@@ -39,10 +39,10 @@ exports.model = {
     database: 'taskplatform',
     prefix: 'tp_',
     encoding: 'utf8',
-    host: '47.99.65.56',
+    host: '39.107.249.104',
     port: 3306,
-    user: 'root',
-    password: 'taskplat2018',
+    user: 'legua',
+    password: 'leguaadmin',
     dateStrings: true
   }
 };

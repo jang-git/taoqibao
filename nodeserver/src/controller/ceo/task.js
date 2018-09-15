@@ -21,11 +21,11 @@ module.exports = class extends Base {
     // const bb = _.sumBy(a, 'num');
 
     // think.logger.warn(bb);
-    return this.success(currentTime());
+    return this.success(this.getTime());
   }
   async listAction() {
     const page = this.get('page') || 1;
-    const res = await this.model('task').field('id,tid,sid,shop_name,product_name,product_url,product_img,createtime,status,nums').where({cid: this.ctx.state.userId}).page(page).order('createtime desc').countSelect();
+    const res = await this.model('task').where({ceo_id: this.getLoginUserId()}).page(page).order('createtime desc').countSelect();
 
     return this.success(res, '查询成功');
   }
@@ -57,66 +57,147 @@ module.exports = class extends Base {
   async step2Action() {
     const taskid = this.post('taskid');
 
-    const yj = await this.model('task_price').field('CAST(price AS CHAR) AS price, pricetype,num, CAST(total_amount AS CHAR) AS total_amount').where({task_id: taskid, type: 1}).select();
-    const bj = await this.model('task_price').field('CAST(price AS CHAR) AS price, pricetype,num, CAST(total_amount AS CHAR) AS total_amount').where({task_id: taskid, type: 1}).where({task_id: taskid, type: 2}).select();
+    const yj = await this.model('task_price').field('price, pricetype,num, total_amount').where({task_id: taskid, type: 1}).select();
+    const bj = await this.model('task_price').field('price, pricetype,num, total_amount').where({task_id: taskid, type: 2}).select();
+    const total = await this.model('task').field('nums, total_price').where({id: taskid}).find();
     const res = {
       yj: yj,
-      bj: bj
+      bj: bj,
+      total: total
     };
     return this.success(res, '查询成功');
   }
   // 添加任务
   async addAction() {
     const pinfo = this.post('productInfo');
-    const keyData = this.post('keywordInfo');
+    const keyData = this.post('keywordInfo'); // 关键词数据任务
     const crontabs = this.post('crontabInfo');
+    const ceoid = this.getLoginUserId();
+    const taskData = {};
+    const productData = {};
 
-    const data = {};
-    data.cid = this.ctx.state.userId;
-    data.tid = this.post('tid');
-    data.sid = this.post('sid');
-    data.shop_name = this.post('shop_name');
-    data.fantype = this.post('fantype');
+    // 任务信息
+    taskData.ceo_id = ceoid;
+    taskData.shop_id = this.post('shop_id');
+    taskData.task_type_id = this.post('task_type_id'); // 任务类型
+    taskData.fantype = this.post('fantype'); // 平台返款 1元服务费
+    taskData.nums = 0; // 任务总单数
+    taskData.total_price = 0; // 任务总价格
+    taskData.createtime = this.getTime();
 
-    data.product_name = pinfo.product_name;
-    data.product_url = pinfo.product_url;
-    data.product_img = pinfo.product_img;
-    data.product_actual_price = pinfo.product_actual_price;
-    data.product_public_price = pinfo.product_public_price;
-    data.product_count = pinfo.product_count;
-    data.product_yffs = pinfo.product_yffs;
-    data.order_method = pinfo.order_method;
-    data.goods_address = pinfo.goods_address;
+    // 商品信息
+    productData.ceo_id = ceoid;
+    productData.product_name = pinfo.product_name; // 产品标题
+    productData.product_url = pinfo.product_url; // 产品地址
+    productData.product_img = pinfo.product_img; // 产品图片
+    productData.product_actual_price = pinfo.product_actual_price; // 实际价格
+    productData.product_public_price = pinfo.product_public_price; // 搜索价格
+    productData.product_count = pinfo.product_count; // 所需购买件数
+    productData.is_post = pinfo.product_yffs; // 是否包邮
+    productData.sort_order = pinfo.order_method; // 排序方式
+    productData.product_address = pinfo.goods_address; // 商品所在地
+    productData.createtime = this.getTime();
 
-    // data.total_price = this.post('moneyInfo').total;
-    //
-    // data.task_type_num = JSON.stringify(this.post('keywordInfo'));
-    // data.crontabs = JSON.stringify(this.post('crontabInfo'));
-    // data.task_charge = JSON.stringify(this.post('moneyInfo'));
-    data.createtime = currentTime();
-    const dianfujine = data.product_count * data.product_actual_price; // 这是实际要垫付的金额 需要计算出佣金
-    const yongjin = await this.model('price').findPrice(data.tid, dianfujine); // 计算出佣金
+    // 这是实际要垫付的金额 需要计算出佣金
+    const dianfujine = productData.product_count * productData.product_actual_price;
+    // 计算出佣金
+    const yongjin = await this.model('price').findPrice(taskData.task_type_id, dianfujine);
 
     if (think.isEmpty(yongjin)) {
       return this.fail('佣金计算出错!');
     }
 
-    const keyNum = _.sumBy(keyData, 'num');
-    const croNum = _.sumBy(crontabs, 'releaseCount');
-    const orderTotal = keyNum === croNum ? keyNum : 0; // 计算出总单数
+    // 计算总单数
+    taskData.nums = _.sumBy(keyData, 'num');
 
-    if (orderTotal === 0) {
-      return this.fail('单数总量不匹配');
-    }
-    data.nums = orderTotal;
+    const feedataDetail = []; // 这里是费用详情数据
+    // type 表示大类型 1佣金 2本金
+    // pricetype 表示费用类型 1基础佣金2文字评价佣金3图片评价佣金4平台服务费5返款本金
 
-    const taskid = await this.model('task').add(data);
+    const feeJcyj = { // 基础佣金
+      type: 1,
+      pricetype: 1,
+      num: taskData.nums,
+      price: yongjin,
+      total_amount: taskData.nums * yongjin
+    };
+    feedataDetail.push(feeJcyj);
+
+    const groupTask = _.groupBy(keyData, function(o) { // 分组关键词任务
+      return o.type;
+    });
+
+    _.forEach(groupTask, function(val, key) {
+      if (key === 1) { // 说明有文字评价内容
+        const wzyj = 3; // 文字评价内容多加 3元佣金
+        const wznum = _.sumBy(val, 'num');
+        const wzyjData = {
+          type: 1,
+          pricetype: 2,
+          num: wznum,
+          price: wzyj,
+          total_amount: wznum * wzyj
+        };
+        feedataDetail.push(wzyjData);
+      }
+      think.logger.warn(val);
+      think.logger.warn(key);
+    });
+
+    // 平台服务费用
+    const feePt = {
+      type: 2,
+      pricetype: 4,
+      num: taskData.nums,
+      price: 1, // 这里是平台服务费用
+      total_amount: taskData.nums * 1
+    };
+    feedataDetail.push(feePt);
+    const feeJcbj = { // 基础本金
+      type: 2,
+      pricetype: 5,
+      num: taskData.nums,
+      price: dianfujine, // 这里是需要垫付的金额
+      total_amount: taskData.nums * dianfujine
+    };
+    feedataDetail.push(feeJcbj);
+
+    // const keywords1 = this.post('keywords1');
+    // if (keywords1 && keywords1.ischeck === true) {
+    //   keywordsList = keywordsList.concat(keywords1.data);
+    // }
+    // const keywords2 = this.post('keywords2');
+    // if (keywords2 && keywords2.ischeck === true) {
+    //   keywordsList = keywordsList.concat(keywords1.data);
+    // }
+
+    // 计算收费详情数据
+
     // 处理关键词任务类型 关键词类型1.普通任务；2文字任务；3图片任务；4.浏览任务；5.特别任务；6.裂变任务
+
+    taskData.total_price = _.sumBy(feedataDetail, 'total_amount'); // 总金额
+
+    const taskid = await this.model('task').add(taskData);
+
+    productData.task_id = taskid;
+    await this.model('task_product').add(productData);
+
+    for (const val of keyData) {
+      val.task_id = taskid;
+      val.ceo_id = ceoid;
+      await this.model('task_keywords').add(val);
+    }
+    // _.each(keywordsList, async function(val) {
+    //   const d = val;
+    //   d.task_id = taskid;
+    //   d.ceo_id = ceoid;
+    //   await this.model('task_keywords').add(val);
+    // });
 
     const modelcronData = _.map(crontabs, val => {
       const crontabData = {
-        taskid: taskid,
-        cid: this.ctx.state.userId,
+        task_id: taskid,
+        ceo_id: ceoid,
         start_time: val.startTime,
         step_minute: val.intervalTime,
         num: val.releaseCount
@@ -124,119 +205,14 @@ module.exports = class extends Base {
       return crontabData;
     });
 
-    // 处理普通任务关键词
-    // if (keyData.keywords1.ischeck) {
-    //   for (let i = 0; i < keyData.keywords1.data.length; i++) {
-    //     const data = {
-    //       taskid: taskid,
-    //       type: 1,
-    //       name: keyData.keywords1.data[i].keyword,
-    //       num: keyData.keywords1.data[i].num, // 1个关键词的任务数量
-    //       dfzj: dianfujine,
-    //       yj: yongjin, // 普通任务没有附加金额
-    //       fjje: 0,
-    //       createtime: currentTime()
-    //     };
-    //     await this.model('task_keywords').add(data);
-    //   }
-    // }
-    // 处理文字任务关键词
-    // if (keyData.keywords2.ischeck) {
-    //   for (let i = 0; i < keyData.keywords2.data.length; i++) {
-    //     const data = {
-    //       taskid: taskid,
-    //       type: 2,
-    //       name: keyData.keywords2.data[i].keyword,
-    //       pj_content: keyData.keywords2.data[i].content,
-    //       num: keyData.keywords2.data[i].num, // 1个关键词的任务数量
-    //       dfzj: dianfujine,
-    //       yj: yongjin, // 普通任务没有附加金额
-    //       fjje: 3,
-    //       createtime: currentTime()
-    //     };
-    //     await this.model('task_keywords').add(data);
-    //   }
-    // }
-
-    // 处理计划任务数据结构
-
-    // for (let i = 0; i < crontabs.length; i++) {
-    //   const crontabData = {
-    //     taskid: taskid,
-    //     cid: this.ctx.state.userId,
-    //     start_time: crontabs[i].startTime,
-    //     step_minute: crontabs[i].intervalTime,
-    //     num: crontabs[i].releaseCount,
-    //     createtime: currentTime()
-    //   };
-    //   await this.model('task_crontab').add(crontabData);
-    // }
-
-    // 生成费用详情
-    const feeData = []; // 批量插入数据库
-
-    const feeJcyj = { // 基础佣金
-      type: 1, // 大类型 1佣金 2本金
-      pricetype: 1,
-      task_id: taskid,
-      cid: this.ctx.state.userId,
-      num: orderTotal,
-      price: yongjin,
-      total_amount: orderTotal * yongjin
-    };
-    feeData.push(feeJcyj);
-
-    const keyword2data = _.filter(keyData, function(o) {
-      return o.type === 2;
-    });
-
-    // 如果有文字评价任务
-    if (keyword2data.length > 0) {
-      const keywords2Num = _.sumBy(keyword2data, 'num');
-      const wzyj = 3;
-      const feeWzyj = { // 文字任务评价附加金额
-        type: 1,
-        pricetype: 2,
-        task_id: taskid,
-        cid: this.ctx.state.userId,
-        num: keywords2Num,
-        price: wzyj,
-        total_amount: keywords2Num * wzyj
-      };
-      feeData.push(feeWzyj);
-    }
-    // 平台服务费用
-    const feePt = {
-      type: 2,
-      pricetype: 4,
-      task_id: taskid,
-      cid: this.ctx.state.userId,
-      num: orderTotal,
-      price: 1, // 这里是平台服务费用
-      total_amount: orderTotal * 1
-    };
-    feeData.push(feePt);
-    const feeJcbj = { // 基础本金
-      type: 2,
-      pricetype: 5,
-      task_id: taskid,
-      cid: this.ctx.state.userId,
-      num: orderTotal,
-      price: dianfujine, // 这里是需要垫付的金额
-      total_amount: orderTotal * dianfujine
-    };
-    feeData.push(feeJcbj);
-
-    _.map(keyData, async val => {
-      const v = val;
-      v.taskid = taskid;
-      await this.model('task_keywords').add(v);
-      // return v;
-    });
-
     await this.model('task_crontab').addMany(modelcronData);
-    // await this.model('task_keywords').addMany(modelkeyData);
-    await this.model('task_price').addMany(feeData);
+    const feeModelData = _.map(feedataDetail, function(o) {
+      const val = o;
+      val.task_id = taskid;
+      val.ceo_id = ceoid;
+      return val;
+    });
+    await this.model('task_price').addMany(feeModelData);
 
     if (taskid > 0) {
       return this.success(taskid, '添加成功!');

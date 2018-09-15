@@ -4,8 +4,19 @@ module.exports = class extends think.Model {
     return {
       task_type: { // 配置跟分类的关联关系
         type: think.Model.HAS_ONE,
-        key: 'tid',
+        key: 'task_type_id',
         fKey: 'id'
+      },
+      shop: {
+        type: think.Model.HAS_ONE,
+        key: 'shop_id',
+        fKey: 'id',
+        field: 'id,shop_name'
+      },
+      task_product: {
+        type: think.Model.BELONG_TO,
+        key: 'id',
+        fKey: 'task_id'
       }
     };
   }

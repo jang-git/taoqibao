@@ -1,8 +1,41 @@
 const fs = require('fs');
 
+const qiniu = require('qiniu');
 module.exports = class extends think.Controller {
   async indexAction() {
     return this.success('ok');
+  }
+  // 获取七牛token
+  // async getQiniuTokenAction() {
+  //   const data = await this.cache('qiniuToken', () => {
+  //     return this.getqiniuToken();
+  //   }, {
+  //     timeout: 60 * 60 * 1000
+  //   });
+  //   return this.success(data);
+  // }
+  async getQiniuTokenAction() {
+    const accessKey = 'tStF9hGZwqCvQOn0fmGKrdzxi8M8fKxWq_RgBKeo';
+    // 你自己的accessKey
+    const secretKey = '9SQyZf1WNnopjzFxJp-fdsMRsU_K8MihQXaza6eY';
+    // 你自己的secretKey
+    const bucket = 'taskimage';
+    // 你创建的七牛存储空间名
+    const domain = 'http://pf3ctkfrt.bkt.clouddn.com/';
+    // 你自己的bucket的domain
+    const mac = new qiniu.auth.digest.Mac(accessKey, secretKey);
+    const deadline = parseInt(new Date().getTime() / 1000) + 3600;
+    const options = {
+      scope: bucket,
+      deadline: deadline
+    };
+    const putPolicy = new qiniu.rs.PutPolicy(options);
+    const uploadToken = putPolicy.uploadToken(mac);
+    const data = {
+      token: uploadToken,
+      domain: domain
+    };
+    return this.success(data);
   }
 
   async taskAction() {

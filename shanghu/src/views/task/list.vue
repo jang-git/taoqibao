@@ -11,12 +11,12 @@
             <div class="ot f-cb">
               <div class="f-fl">
                 <img class="plat-logo" src="http://s.zhuan.net/image/icon_1.png">
-                <span class="shopname">{{item.shop_name}}</span>
+                <span class="shopname">{{item.shop.shop_name}}</span>
               </div>
               <div class="f-fr">
                 <ul class="f-cb ">
                   <li class="f-fl prompt">
-                  <span style="color:#D9B300">{{item.task_type.name}}</span>
+                  <span style="color:#D9B300">{{item.task_type.tasktype_name}}</span>
                   </li>
                   <li class="f-fl vgb"></li>
                   <li class="f-fl prompt">总单数：{{item.nums}}</li>
@@ -37,10 +37,10 @@
               <div class="f-fl g-info p-r">
                 <div class="f-cb">
                   <a href="#" target="_blank">
-                    <img class="goods f-fl" :src="item.product_img" alt="商品主图">
+                    <img class="goods f-fl" :src="item.task_product.product_img" alt="商品主图">
                   </a>
                   <div class="f-fl ">
-                    <div class="g-desc lim-w"> {{item.product_name}} </div>
+                    <div class="g-desc lim-w"> {{item.task_product.product_name}} </div>
                     <div class="r-time">{{item.createtime | formatDate}}</div>
                   </div>
                 </div>

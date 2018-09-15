@@ -132,8 +132,7 @@ export default {
           this.benjin = res.data.bj;
           this.bjPrice = _.sumBy(this.benjin, 'total_amount');
           this.yjPrice = _.sumBy(this.yongjin, 'total_amount');
-          // this.totalNum = this.yongjin
-          // this.task_charge = res.data;
+          this.totalNum = res.data.total.nums;
         } else {
           this.$Message.error('数据错误');
         }
