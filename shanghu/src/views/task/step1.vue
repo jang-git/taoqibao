@@ -78,7 +78,9 @@
                   <Input type="text" placeholder="" v-model="pinfo.product_url"></Input>
                 </FormItem>
                 <FormItem label="商品主图">
-                  <div class="demo-upload-list" v-for="(item,index) in uploadList" :key="index">
+
+                  <upload-iview @updatePics="setProductimg" :num-max="1" :group-index="0" :default-list="defaultList"></upload-iview>
+                  <!-- <div class="demo-upload-list" v-for="(item,index) in uploadList" :key="index">
                     <template v-if="item.status === 'finished'">
                         <img :src="item.url">
                         <div class="demo-upload-list-cover">
@@ -107,7 +109,7 @@
                       <div style="width: 58px;height:58px;line-height: 58px;">
                           <Icon type="camera" size="20"></Icon>
                       </div>
-                  </Upload>
+                  </Upload> -->
                   <!-- <Upload action="http://127.0.0.1:8360/common/upload/task">
                     <Button type="ghost" icon="ios-cloud-upload-outline">上传</Button>
                   </Upload> -->
@@ -167,7 +169,7 @@
             <div>
               <Card>
                 <p slot="title">
-                  <i-switch v-model="keywords1.ischeck" size="small"></i-switch>普通好评任务 ( 默认为5星无评价内容，如需评价请备注，但不可规定评价内容 )
+                  <i-switch v-model="keywords1.ischeck" size="small"></i-switch>普通好评任务 ( 选择此服务后，接手任务的买家会根据商品属性、快递、服务、质量等内容编写15字左右好评内容 )
                 </p>
                 <div v-if="keywords1.ischeck" class="searchnew">
                   <div class="searchitemnew" v-for="(item,index) in keywords1.data" :key="index">
@@ -199,6 +201,28 @@
                     </div>
                   </div>
                   <Button @click="addkeywords2" type="primary" icon="plus" size="small">添加关键词</Button>
+                </div>
+              </Card>
+
+              <Card class="margin-top-10">
+                <p slot="title">
+                  <i-switch v-model="keywords3.ischeck" size="small"></i-switch>图文好评 (文字好评任务佣金 + 5金/单 )
+                </p>
+                <div v-show="keywords3.ischeck" class="searchnew">
+                  <div class="searchitemnew" v-for="(item,index) in keywords3.data" :key="index">
+                    <span class="tit">搜索关键词</span>
+                    <Input type="text" v-model="item.keyword" style="width:180px;"></Input>
+                    <span>规格说明</span><Input type="text" v-model="item.meta" style="width:180px;"></Input>
+                    <span>添加垫付</span><InputNumber :max="1" :min="1" v-model="item.num"></InputNumber>单
+                    <Button v-if="index>0" @click="delkeywords3(index)" type="error" size="small">删除</Button>
+                    <div class="margin-top-10">
+                      <Input type="textarea" v-model="item.content" :autosize="{minRows: 3,maxRows: 5}" placeholder="限999字内..."></Input>
+                    </div>
+                    <div class="twhp-img margin-top-10">
+                      <upload-iview @updatePics="setpics" :group-index="index" :default-list="item.defaultList"></upload-iview>
+                    </div>
+                  </div>
+                  <Button @click="addkeywords3" type="primary" icon="plus" size="small">添加关键词</Button>
                 </div>
               </Card>
 
@@ -320,12 +344,13 @@ import _ from 'lodash';
 import moment from 'moment';
 import { shopListUse, addTaskData, platform, uploadToken } from '@/server/api';
 import showArea from './shoparea';
-
+import uploadIview from '../main-components/upload';
 
 export default {
   name: 'step1',
   components: {
     showArea,
+    uploadIview,
   },
   data() {
     return {
@@ -344,7 +369,7 @@ export default {
 
 
       heduiModel: false,
-      current: 0,
+      current: 1,
       loading: true, // 核对信息model的确定按钮loading
       totalNum: 0, // 总单数
       // 表单规则==================================================
@@ -385,6 +410,7 @@ export default {
         product_name: '???新科无线话筒手机全民k歌麦克风蓝牙家用电视唱歌神器音响一体全名k歌通用电容录音全能儿童卡拉ok话筒', // 商品标题
         product_url: 'https://detail.tmall.com/item.htm?id=567857881289&ali_refid=a3_430583_1006:1152204712:N:%E8%AF%9D%E7%AD%92%E9%9F%B3%E5%93%8D%E4%B8%80%E4%BD%93%E9%BA%A6%E5%85%8B%E9%A3%8E:1ea56e6394671de79f17dadda200884f&ali_trackid=1_1ea56e6394671de79f17dadda200884f&spm=a230r.1.14.1&sku_properties=165354720:6536025', // 商品链接
         product_img: '', // 商品主图地址
+        product_img_list: [],
         product_count: 2, // 每人购买
         product_actual_price: 159, // 商品售价
         product_public_price: 180, // 搜索价格
@@ -425,13 +451,22 @@ export default {
           },
         ],
       },
-
+      // 图文好评
+      keywords3: {
+        ischeck: false,
+        data: [
+          {
+            keyword: '红薯',
+            num: 1,
+            content: '真的很好吃啊',
+            type: 3,
+            defaultList: [],
+            uploadList: [],
+          },
+        ],
+      },
 
       // 第三步====================================================
-
-      data: {
-
-      },
       // 计划任务
       crontabs: [
         {
@@ -471,48 +506,28 @@ export default {
     // console.log(this.task_charge);
   },
   mounted() {
-    this.uploadList = this.$refs.upload.fileList;
+    // this.uploadList = this.$refs.upload.fileList;
     this.getQiniu();
+    // this.duopic();
   },
   methods: {
-    handleView(name) {
-      this.imgName = name;
-      this.visible = true;
-    },
-    handleRemove(file) {
-      const fileList = this.$refs.upload.fileList;
-      this.$refs.upload.fileList.splice(fileList.indexOf(file), 1);
-      this.pinfo.product_img = '';
-    },
-    handleSuccess(res, file) {
-      // console.log(res);
-      // console.log(this.uploadList);
-      // console.log(file);
-      const a = file;
-      a.url = this.picDomain + res.key;
-      a.name = res.key;
-      this.pinfo.product_img = file.url;
-    },
-    handleFormatError() {
-      this.$Notice.warning({
-        title: '格式要求',
-        desc: '请上传JPG或者PNG图片',
-      });
-    },
-    handleMaxSize(file) {
-      this.$Notice.warning({
-        title: '最大限制',
-        desc: `文件 ${file.name} 太大，不能超过4M.`,
-      });
-    },
-    handleBeforeUpload() {
-      const check = this.uploadList.length < 1;
-      if (!check) {
-        this.$Notice.warning({
-          title: '请删除图片再重新上传',
-        });
+    // 设置商品主图
+    setProductimg(val) {
+      const index = val.key;
+      const data = val.data;
+      // this.defaultList = data;
+      if (data.length > 0) {
+        this.pinfo.product_img = data[index].url;
+      } else {
+        this.pinfo.product_img = '';
       }
-      return check;
+    },
+    // 设置图文好评的图集
+    setpics(val) {
+      const index = val.key;
+      const data = val.data;
+      this.keywords3.data[index].uploadList = data;
+      console.log(val);
     },
     // 获取平台数据
     getPlatform() {
@@ -705,13 +720,6 @@ export default {
       if (this.keywords2.ischeck) {
         num1 += _.sumBy(this.keywords2.data, 'num');
       }
-      // _.map(this.taskKeywords, (value, key) => {
-      //   console.log(value);
-      //   console.log(key);
-      //   if (value.ischeck) {
-      //     num1 += _.sumBy(value.data, 'num');
-      //   }
-      // });
 
       num2 = _.sumBy(this.crontabs, 'releaseCount');
 
@@ -773,8 +781,25 @@ export default {
         this.keywords2.data.push(data);
       }
     },
+    // 添加图文评价任务
+    addkeywords3() {
+      if (this.keywords3.data.length < 5) {
+        const data = {
+          keyword: '',
+          num: 1,
+          content: '',
+          type: 3,
+          defaultList: [],
+          uploadList: [],
+        };
+        this.keywords3.data.push(data);
+      }
+    },
     delkeywords2(index) {
       this.keywords2.data.splice(index, 1);
+    },
+    delkeywords3(index) {
+      this.keywords3.data.splice(index, 1);
     },
     // 添加计划任务
     addContrab() {
@@ -810,43 +835,6 @@ export default {
 </script>
 
 <style scoped>
-  .demo-upload-list{
-    display: inline-block;
-    width: 60px;
-    height: 60px;
-    text-align: center;
-    line-height: 60px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    overflow: hidden;
-    background: #fff;
-    position: relative;
-    box-shadow: 0 1px 1px rgba(0,0,0,.2);
-    margin-right: 4px;
-  }
-  .demo-upload-list img{
-      width: 100%;
-      height: 100%;
-  }
-  .demo-upload-list-cover{
-      display: none;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,.6);
-  }
-  .demo-upload-list:hover .demo-upload-list-cover{
-      display: block;
-  }
-  .demo-upload-list-cover i{
-      color: #fff;
-      font-size: 20px;
-      cursor: pointer;
-      margin: 0 2px;
-  }
-
   .shop-block {
     padding: 15px 15px;
     border: 1px solid #eee;

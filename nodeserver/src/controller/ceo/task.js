@@ -2,25 +2,9 @@ const _ = require('lodash');
 const Base = require('./base.js');
 
 module.exports = class extends Base {
-  indexAction() {
-    // const a = [
-    //   {
-    //     num: 1,
-    //     key: 'a'
-    //   },
-    //   {
-    //     num: 2,
-    //     key: 'a'
-    //   },
-    //   {
-    //     num: 3,
-    //     key: 'a'
-    //   }
-    // ];
-
-    // const bb = _.sumBy(a, 'num');
-
-    // think.logger.warn(bb);
+  async indexAction() {
+    const res = await this.model('task_keywords').where({task_id: 4}).select();
+    think.logger.warn(res);
     return this.success(this.getTime());
   }
   async listAction() {
@@ -32,11 +16,22 @@ module.exports = class extends Base {
   // 支付接口
   async paymentAction() {
     const taskid = this.post('taskid');
-    const user = await this.model('ceo').where({id: this.ctx.state.userId}).find();
-    const taskInfo = await this.model('task').where({id: taskid}).find();
+    if (think.isEmpty(taskid)) {
+      return this.fail('参数不完整');
+    }
+    const user = await this.model('ceo').field('id, capital').where({id: this.ctx.state.userId}).find();
+    const taskInfo = await this.model('task').taskSingle(taskid);
 
-    const userBalance = user.balance; // 用户金额
+    if (think.isEmpty(user) || think.isEmpty(taskInfo)) {
+      think.logger.warn(user);
+      return this.fail('查询错误!');
+    }
+    const userBalance = user.capital; // 用户本金
     const taskMoney = taskInfo.total_price; // 此次任务所需要的金额
+
+    if (taskInfo.status !== 1) {
+      return this.fail('任务已支付过!');
+    }
     if (taskMoney === 0) {
       return this.fail('此次任务所需金额不合法');
     }
@@ -44,13 +39,12 @@ module.exports = class extends Base {
       return this.fail('余额不足,请先充值!');
     }
 
-    const res1 = await this.model('ceo').where({id: this.ctx.state.userId}).decrement('balance', taskMoney);
-    const res2 = await this.model('task').where({id: taskid}).update({status: 2}); // 切换到待审核状态
-
-    if (res1 && res2) {
-      return this.success('支付成功!');
+    const payAct = await this.model('pay');
+    const res = await payAct.payTask(taskid, this.ctx.state.userId, taskMoney);
+    if (res) {
+      return this.success('', '支付成功');
     } else {
-      return this.fail('支付出现错误!');
+      return this.fail('服务器错误!');
     }
   }
 
@@ -128,7 +122,7 @@ module.exports = class extends Base {
     });
 
     _.forEach(groupTask, function(val, key) {
-      if (key === 1) { // 说明有文字评价内容
+      if (key === 2) { // 说明有文字评价内容
         const wzyj = 3; // 文字评价内容多加 3元佣金
         const wznum = _.sumBy(val, 'num');
         const wzyjData = {
@@ -139,6 +133,18 @@ module.exports = class extends Base {
           total_amount: wznum * wzyj
         };
         feedataDetail.push(wzyjData);
+      }
+      if (key === 3) { // 说明有图片文字评价内容
+        const twyj = 5; // 图文评价内容多加 5元佣金
+        const twnum = _.sumBy(val, 'num');
+        const twyjData = {
+          type: 1,
+          pricetype: 2,
+          num: twnum,
+          price: twyj,
+          total_amount: twnum * twyj
+        };
+        feedataDetail.push(twyjData);
       }
       think.logger.warn(val);
       think.logger.warn(key);
@@ -187,13 +193,8 @@ module.exports = class extends Base {
       val.ceo_id = ceoid;
       await this.model('task_keywords').add(val);
     }
-    // _.each(keywordsList, async function(val) {
-    //   const d = val;
-    //   d.task_id = taskid;
-    //   d.ceo_id = ceoid;
-    //   await this.model('task_keywords').add(val);
-    // });
 
+    // 入库定时任务
     const modelcronData = _.map(crontabs, val => {
       const crontabData = {
         task_id: taskid,
@@ -204,8 +205,8 @@ module.exports = class extends Base {
       };
       return crontabData;
     });
-
     await this.model('task_crontab').addMany(modelcronData);
+    // 入库收费详情
     const feeModelData = _.map(feedataDetail, function(o) {
       const val = o;
       val.task_id = taskid;

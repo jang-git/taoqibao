@@ -96,13 +96,13 @@ export const appRouter = [
   {
     path: '/capital',
     icon: 'lock-combination',
-    title: '资金信息',
+    title: '账户信息',
     name: 'tvms',
     component: Main,
     children: [
-      { path: 'offlinedepost', title: '充值', name: 'offlinedepost', component: () => import('@/views/capital/record.vue') },
-      { path: 'withdraw', title: '提现', name: 'withdraw_capital', component: () => import('@/views/capital/record.vue') },
-      { path: 'record', title: '资金记录', name: 'record_capital', component: () => import('@/views/capital/record.vue') },
+      { path: 'recharge', title: '账号充值', name: 'recharge', component: () => import('@/views/capital/recharge.vue') },
+      // { path: 'withdraw', title: '提现', name: 'withdraw_capital', component: () => import('@/views/capital/record.vue') },
+      { path: 'record', title: '资金明细', name: 'record_capital', component: () => import('@/views/capital/record.vue') },
     ],
   },
   {

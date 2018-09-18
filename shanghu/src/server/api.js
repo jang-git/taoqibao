@@ -119,7 +119,7 @@ export const logout = data => axios.get('/admin/logout', data);
 /**
  * 获取用户信息
  */
-export const userinfo = () => axios.get('ceo/user/info', {});
+export const userinfo = () => axios.post('ceo/user/info', {});
 /**
  * 查询省市区
  */
@@ -161,3 +161,12 @@ export const payMent = data => axios.post('ceo/task/payment', data);
  * 获取七牛上传Token
  */
 export const uploadToken = () => axios.get('common/upload/getQiniuToken', {});
+
+/**
+ * 提交付款信息
+ */
+export const addCharge = data => axios.post('ceo/charge/add', data);
+/**
+ * 付款信息列表
+ */
+export const chargeList = () => axios.post('ceo/charge/list', {});

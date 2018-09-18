@@ -53,15 +53,19 @@
         </div>
       </Card>
     </div>
+
   </div>
 </template>
 
 <script>
 import Cookies from 'js-cookie';
 import { login } from '@/server/api';
-// import { leimu } from './tbtask/data';
+import uploadIview from './main-components/upload';
 
 export default {
+  components: {
+    uploadIview,
+  },
   data() {
     return {
       form: {

@@ -10,7 +10,7 @@ util.title = function (title) {
   window.document.title = title;
 };
 
-util.timetoDate = function(timestring) {
+util.timetoDate = function (timestring) {
   const time = Number(timestring) * 1000;
   return moment(time).format('YYYY-MM-DD HH:mm:ss');
 };
@@ -82,7 +82,7 @@ util.handleTitle = function (vm, item) {
 util.setCurrentPath = function (vm, name) {
   let title = '';
   let isOtherRouter = false;
-  
+
   vm.$store.state.app.routers.forEach(item => {
     if (item.children.length === 1) {
       if (item.children[0].name === name) {
@@ -103,7 +103,7 @@ util.setCurrentPath = function (vm, name) {
     }
   });
 
-  
+
   let currentPathArr = [];
   if (name === 'home_index') {
     currentPathArr = [
@@ -120,7 +120,6 @@ util.setCurrentPath = function (vm, name) {
     (name.indexOf('_index') >= 0 || isOtherRouter) &&
     name !== 'home_index'
   ) {
-    
     currentPathArr = [
       {
         title: util.handleTitle(
@@ -267,15 +266,15 @@ util.fullscreenEvent = function (vm) {
   // 全屏相关
 };
 
-util.getHeader = function (){
+util.getHeader = function () {
   const local = Cookies.get('token');
   let res = {};
   if (local) {
     res = {
-      "x-taskplatform-token": local,
-    }
+      'x-taskplatform-token': local,
+    };
   }
   return res;
   // return JSON.stringify(res);
-}
+};
 export default util;

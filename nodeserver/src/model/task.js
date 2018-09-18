@@ -21,6 +21,12 @@ module.exports = class extends think.Model {
     };
   }
 
+  async taskSingle(taskid) {
+    this.setRelation(false);
+    const res = await this.where({id: taskid}).find();
+    return res;
+  }
+
   async updateBypay(ceoid, taskid, price, status) {
     try {
       await this.startTrans();
